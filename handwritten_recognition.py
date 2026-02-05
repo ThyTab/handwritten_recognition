@@ -15,7 +15,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 CANVAS_SIZE = 280  # 10倍放大便于手绘
 PIXEL_SIZE = CANVAS_SIZE // 28  # 每个MNIST像素对应画布的像素数
 # 模型保存路径
-MODEL_PATH = "model_save.pth"
+MODEL_PATH = "手写数字识别/model_save.pth"
 
 
 # 1.加载数据集
@@ -28,37 +28,25 @@ def load_data():
     return train_iter,test_iter
 
 # 2.定义模型
-class MNIST_CNN(nn.Module):
-    def __init__(self):
-        super(MNIST_CNN, self).__init__()
-        self.conv_layers = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2),
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2, 2)
-        )
-        self.fc_layers = nn.Sequential(
-            nn.Linear(64 * 7 * 7, 128),
-            nn.ReLU(),
-            nn.Dropout(0.25),
-            nn.Linear(128, 10)
-        )
+class softmax_regression(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.linear = nn.Linear(28*28,10)
+        #参数初始化
+        nn.init.normal_(self.linear.weight,mean=0,std=0.01)
+        nn.init.zeros_(self.linear.bias)
 
-    def forward(self, x):
-        x = self.conv_layers(x)
-        x = x.view(-1, 64 * 7 * 7)  # 展平
-        x = self.fc_layers(x)
+    def forward(self,x):
+        x = self.linear(x.view(-1,28*28))   #不用加softmax层，CrossEntropyLoss自带
         return x
     
 # 3.训练模型
 def train(train_iter,test_iter):
-    model = MNIST_CNN().to(DEVICE)
+    model = softmax_regression().to(DEVICE)
     criterion = nn.CrossEntropyLoss()   #自带softmax
     optimizer = optim.SGD(model.parameters(),lr=0.01,momentum=0.9)
     #开始训练
-    epochs,loss_list = 3,[]
+    epochs,loss_list = 100,[]
     model.train()
     for epoch in range(epochs):
         total_loss,total_sample = 0,0
@@ -102,7 +90,7 @@ def train_and_save_model():
 # 6.加载预训练模型
 def load_model():
     """加载预训练模型（无模型则自动训练）"""
-    model = MNIST_CNN().to(DEVICE)
+    model = softmax_regression().to(DEVICE)
     if os.path.exists(MODEL_PATH):
         model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
         print("已加载预训练模型")
